@@ -1,0 +1,318 @@
+# Virtual PC Setup for Google Colab/Kaggle
+# This creates a PC-like environment in your browser
+
+import subprocess
+import threading
+import time
+import os
+from IPython.display import HTML
+
+class VirtualPC:
+    def __init__(self):
+        self.setup_complete = False
+        self.services = {}
+        
+    def install_desktop_environment(self):
+        """Install full desktop environment"""
+        print("🖥️ Installing desktop environment...")
+        
+        # Update system
+        subprocess.run(['apt', 'update'], check=True)
+        
+        # Install desktop environment
+        subprocess.run(['apt', 'install', '-y', 
+                       'xfce4', 'xfce4-goodies', 
+                       'firefox', 'libreoffice',
+                       'gimp', 'vlc', 'file-manager'], check=True)
+        
+        # Install VNC server
+        subprocess.run(['apt', 'install', '-y', 
+                       'x11vnc', 'xvfb', 'websockify'], check=True)
+        
+        print("✅ Desktop environment installed!")
+    
+    def install_development_tools(self):
+        """Install development tools"""
+        print("🛠️ Installing development tools...")
+        
+        # Development packages
+        subprocess.run(['apt', 'install', '-y',
+                       'git', 'curl', 'wget', 'vim', 'nano',
+                       'htop', 'tree', 'unzip', 'build-essential'], check=True)
+        
+        # Programming languages and tools
+        subprocess.run(['pip', 'install', 
+                       'jupyter', 'jupyterlab', 'code-server',
+                       'streamlit', 'flask', 'fastapi'], check=True)
+        
+        # Install Node.js and npm
+        subprocess.run(['curl', '-fsSL', 'https://deb.nodesource.com/setup_lts.x', 
+                       '|', 'bash', '-'], shell=True, check=True)
+        subprocess.run(['apt', 'install', '-y', 'nodejs'], check=True)
+        
+        print("✅ Development tools installed!")
+    
+    def setup_file_system(self):
+        """Create a PC-like file system"""
+        print("📁 Setting up file system...")
+        
+        # Mount Google Drive for persistence
+        try:
+            from google.colab import drive
+            drive.mount('/content/drive')
+            base_path = '/content/drive/MyDrive/VirtualPC'
+        except:
+            base_path = '/home/virtualpc'
+        
+        # Create directory structure
+        directories = [
+            'Desktop', 'Documents', 'Downloads', 'Pictures', 'Videos', 'Music',
+            'Development', 'Projects', 'Scripts', 'Config', 'Applications'
+        ]
+        
+        for directory in directories:
+            os.makedirs(f'{base_path}/{directory}', exist_ok=True)
+        
+        # Create shortcuts/aliases
+        with open(f'{base_path}/Config/aliases.sh', 'w') as f:
+            f.write('''#!/bin/bash
+# Virtual PC Aliases
+alias desktop="startx"
+alias files="nautilus"
+alias browser="firefox"
+alias code="code-server"
+alias terminal="gnome-terminal"
+
+export VIRTUAL_PC_HOME="{}"
+cd $VIRTUAL_PC_HOME
+'''.format(base_path))
+        
+        self.pc_home = base_path
+        print(f"✅ File system created at: {base_path}")
+    
+    def start_vnc_server(self):
+        """Start VNC server for desktop access"""
+        print("🌐 Starting VNC server...")
+        
+        # Start virtual display
+        subprocess.Popen(['Xvfb', ':1', '-screen', '0', '1280x720x16'],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        time.sleep(2)  # Wait for display to start
+        
+        # Set display environment
+        os.environ['DISPLAY'] = ':1'
+        
+        # Start desktop environment
+        subprocess.Popen(['startxfce4'],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        time.sleep(3)  # Wait for desktop to start
+        
+        # Start VNC server
+        subprocess.Popen(['x11vnc', '-display', ':1', '-nopw', '-forever', '-shared'],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        print("✅ VNC server started!")
+    
+    def start_web_services(self):
+        """Start web-based services"""
+        print("🌐 Starting web services...")
+        
+        # Start VS Code Server
+        subprocess.Popen(['code-server', '--bind-addr', '0.0.0.0:8080', '--auth', 'none'],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Start JupyterLab
+        subprocess.Popen(['jupyter', 'lab', '--ip=0.0.0.0', '--port=8888', 
+                         '--no-browser', '--allow-root', '--NotebookApp.token=""'],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Start file manager web interface
+        subprocess.Popen(['python', '-m', 'http.server', '8000'],
+                        cwd=self.pc_home, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        print("✅ Web services started!")
+    
+    def setup_ngrok_tunnels(self):
+        """Setup ngrok tunnels for external access"""
+        print("🌍 Setting up external access...")
+        
+        try:
+            from pyngrok import ngrok
+            
+            # Set auth token if available
+            ngrok_token = os.getenv('NGROK_TOKEN')
+            if ngrok_token:
+                ngrok.set_auth_token(ngrok_token)
+            
+            # Create tunnels
+            self.services['desktop'] = ngrok.connect(5900, "tcp")
+            self.services['vscode'] = ngrok.connect(8080)
+            self.services['jupyter'] = ngrok.connect(8888)
+            self.services['files'] = ngrok.connect(8000)
+            
+            print("✅ External access configured!")
+            
+        except Exception as e:
+            print(f"⚠️ Ngrok setup failed: {e}")
+            print("Using localhost URLs instead")
+            self.services = {
+                'desktop': 'localhost:5900',
+                'vscode': 'localhost:8080', 
+                'jupyter': 'localhost:8888',
+                'files': 'localhost:8000'
+            }
+    
+    def create_desktop_shortcuts(self):
+        """Create desktop shortcuts"""
+        desktop_path = f"{self.pc_home}/Desktop"
+        
+        shortcuts = {
+            'Browser.desktop': '''[Desktop Entry]
+Name=Firefox Browser
+Exec=firefox
+Icon=firefox
+Type=Application
+Categories=Internet;''',
+            
+            'VSCode.desktop': '''[Desktop Entry]
+Name=VS Code
+Exec=code-server
+Icon=code
+Type=Application
+Categories=Development;''',
+            
+            'Terminal.desktop': '''[Desktop Entry]
+Name=Terminal
+Exec=gnome-terminal
+Icon=terminal
+Type=Application
+Categories=System;''',
+            
+            'FileManager.desktop': '''[Desktop Entry]
+Name=Files
+Exec=nautilus
+Icon=folder
+Type=Application
+Categories=System;'''
+        }
+        
+        for filename, content in shortcuts.items():
+            with open(f"{desktop_path}/{filename}", 'w') as f:
+                f.write(content)
+            os.chmod(f"{desktop_path}/{filename}", 0o755)
+    
+    def display_access_info(self):
+        """Display access information"""
+        print("\n" + "="*60)
+        print("🖥️ VIRTUAL PC READY!")
+        print("="*60)
+        
+        print("\n🌐 ACCESS YOUR VIRTUAL PC:")
+        for service, url in self.services.items():
+            print(f"  {service.title()}: {url}")
+        
+        print(f"\n📁 Your Files: {self.pc_home}")
+        
+        print("\n🎮 AVAILABLE APPLICATIONS:")
+        apps = [
+            "Firefox Browser", "VS Code Editor", "JupyterLab",
+            "LibreOffice Suite", "GIMP Image Editor", "Terminal",
+            "File Manager", "Text Editors", "Media Player"
+        ]
+        for app in apps:
+            print(f"  ✅ {app}")
+        
+        print("\n💡 USAGE TIPS:")
+        tips = [
+            "Use the desktop URL to access full GUI",
+            "VS Code provides full development environment", 
+            "Files are stored in Google Drive for persistence",
+            "Terminal gives you full command line access",
+            "Install additional software with apt install"
+        ]
+        for tip in tips:
+            print(f"  💡 {tip}")
+        
+        print("\n🔧 GETTING STARTED:")
+        print("1. Click the desktop URL above")
+        print("2. You'll see a full desktop environment")
+        print("3. Double-click applications to launch them")
+        print("4. Your files persist in Google Drive")
+        
+        print("="*60)
+    
+    def setup_complete_pc(self):
+        """Setup complete virtual PC environment"""
+        print("🚀 Setting up your Virtual PC...")
+        
+        try:
+            # Install all components
+            self.install_desktop_environment()
+            self.install_development_tools()
+            self.setup_file_system()
+            
+            # Start services
+            self.start_vnc_server()
+            self.start_web_services() 
+            self.setup_ngrok_tunnels()
+            
+            # Final setup
+            self.create_desktop_shortcuts()
+            
+            time.sleep(5)  # Let services fully start
+            
+            self.display_access_info()
+            self.setup_complete = True
+            
+        except Exception as e:
+            print(f"❌ Setup failed: {e}")
+            print("Try running individual setup steps manually")
+    
+    def create_web_interface(self):
+        """Create a web-based control panel"""
+        html_content = f'''
+        <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+            <h2>🖥️ Virtual PC Control Panel</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <h3>🌐 Access Points</h3>
+                    <p><a href="{self.services.get('desktop', '#')}" target="_blank">🖥️ Desktop Environment</a></p>
+                    <p><a href="{self.services.get('vscode', '#')}" target="_blank">💻 VS Code</a></p>
+                    <p><a href="{self.services.get('jupyter', '#')}" target="_blank">📓 JupyterLab</a></p>
+                    <p><a href="{self.services.get('files', '#')}" target="_blank">📁 File Manager</a></p>
+                </div>
+                
+                <div style="background: #e3f2fd; padding: 15px; border-radius: 8px;">
+                    <h3>📊 System Info</h3>
+                    <p>💾 Storage: Google Drive</p>
+                    <p>🧠 RAM: 12-30 GB</p>
+                    <p>⚡ CPU: 4 cores</p>
+                    <p>🎮 GPU: Available</p>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px;">
+                <h3>💡 Quick Start Guide</h3>
+                <ol>
+                    <li>Click "Desktop Environment" for full GUI experience</li>
+                    <li>Use VS Code for development work</li>
+                    <li>Access JupyterLab for data science tasks</li>
+                    <li>Manage files through the File Manager</li>
+                </ol>
+            </div>
+        </div>
+        '''
+        
+        return HTML(html_content)
+
+# Usage example
+if __name__ == "__main__":
+    # Create and setup virtual PC
+    vpc = VirtualPC()
+    vpc.setup_complete_pc()
+    
+    # Display web interface
+    vpc.create_web_interface()
