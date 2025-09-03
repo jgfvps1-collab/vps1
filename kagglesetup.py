@@ -13,7 +13,7 @@ import psutil
 from datetime import datetime
 
 # Configuration
-RAILWAY_URL = "https://colab-vps-coordinator.onrender.com/"  # Replace with your Railway URL
+RENDER_URL = "https://colab-vps-coordinator.onrender.com/"  # Replace with your Railway URL
 WORKER_ID = f"kaggle-worker-{int(time.time())}"
 
 print(f"Kaggle Worker ID: {WORKER_ID}")
@@ -36,7 +36,7 @@ def register_with_coordinator():
     
     try:
         response = requests.post(
-            f"{RAILWAY_URL}/api/worker/register",
+            f"{RENDER_URL}/api/worker/register",
             json=registration_data,
             timeout=10
         )
@@ -59,7 +59,7 @@ def poll_for_tasks():
     while True:
         try:
             response = requests.get(
-                f"{RAILWAY_URL}/api/tasks/get",
+                f"{RENDER_URL}/api/tasks/get",
                 params={"worker_id": WORKER_ID},
                 timeout=10
             )
@@ -76,7 +76,7 @@ def poll_for_tasks():
             
             # Send heartbeat
             requests.post(
-                f"{RAILWAY_URL}/api/worker/heartbeat",
+                f"{RENDER_URL}/api/worker/heartbeat",
                 json={"worker_id": WORKER_ID},
                 timeout=10
             )
