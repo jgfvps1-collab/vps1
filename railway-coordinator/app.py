@@ -92,6 +92,14 @@ def get_pending_tasks():
     
     return jsonify({"tasks": available_tasks[:5]})  # Return up to 5 tasks
 
+@app.route('/test-cors')
+def test_cors():
+    return jsonify({
+        "message": "CORS is working!",
+        "origin": request.headers.get('Origin'),
+        "method": request.method
+    })
+
 def assign_task(task):
     """Assign task to best available worker"""
     # Simple assignment logic - can be enhanced
