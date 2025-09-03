@@ -1,8 +1,10 @@
-from flask import Flask, request, jsonify
 import os
-import json
-import redis
-from datetime import datetime
+from flask import Flask, request, jsonify
+import logging
+
+# Set up logging for Render
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -96,4 +98,12 @@ def assign_task(task):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    logger.info(f"Starting server on port {port}")
+    
+    # Use gunicorn for production on Render
+    if os.environ.get('RENDER'):
+        # Production mode on Render
+        app.run(host='0.0.0.0', port=port, debug=False)
+    else:
+        # Development mode
+        app.run(host='0.0.0.0', port=port, debug=True)
