@@ -68,11 +68,11 @@
     </div>
 
     <script>
-        const RAILWAY_URL = 'https://your-app.railway.app'; // Replace with your Railway URL
+        const RENDER_URL = 'https://colab-vps-coordinator.onrender.com/'; // Replace with your Railway URL
         
         async function fetchStatus() {
             try {
-                const response = await fetch(`${RAILWAY_URL}/status`);
+                const response = await fetch(`${RENDER_URL}/status`);
                 const data = await response.json();
                 updateDashboard(data);
             } catch (error) {
@@ -120,7 +120,7 @@
                     description: 'Test task from dashboard'
                 };
                 
-                const response = await fetch(`${RAILWAY_URL}/api/task/submit`, {
+                const response = await fetch(`${RENDER_URL}/api/task/submit`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(task)
