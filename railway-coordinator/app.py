@@ -10,7 +10,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app, 
+     origins=[
+         "https://jgfvps1-collab.github.io",  # Your GitHub Pages domain
+         "http://localhost:3000",             # For local development
+         "http://127.0.0.1:5000"              # For local testing
+     ],
+     methods=["GET", "POST", "PUT", "DELETE"],
+     allow_headers=["Content-Type", "Authorization"]
+)
 
 # In-memory storage (Railway provides Redis addon for $0)
 active_workers = {}
