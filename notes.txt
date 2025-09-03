@@ -6,4 +6,5 @@ kaggle (gmail)
 railway (github)
 
 
-vps1 token: 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 
+vps1 github repo token: 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 
+ngrok: 32ADr6RPxOVvwfxOaQyXVOezV9S_3mvFj2hb9oNdBppRwxLVX
