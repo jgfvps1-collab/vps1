@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Colab VPS Dashboard</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .status-online { color: #28a745; font-weight: bold; }
+        .status-offline { color: #dc3545; font-weight: bold; }
+        .resource-bar { background: #e9ecef; height: 20px; border-radius: 10px; margin: 5px 0; }
+        .resource-fill { background: #007bff; height: 100%; border-radius: 10px; transition: width 0.3s; }
+        .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🚀 Colab VPS Dashboard</h1>
+            <p>Free VPS using Google Colab, Kaggle, and other free services</p>
+            <div id="overall-status">Loading...</div>
+        </div>
+
+        <div class="status-grid">
+            <div class="card">
+                <h3>📊 Resource Summary</h3>
+                <div id="resource-summary">
+                    <p>Total CPU Cores: <span id="total-cpu">0</span></p>
+                    <p>Total RAM: <span id="total-ram">0</span> GB</p>
+                    <p>Active GPUs: <span id="active-gpus">0</span></p>
+                    <p>Active Workers: <span id="active-workers">0</span></p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>⚙️ Worker Status</h3>
+                <div id="worker-status">Loading workers...</div>
+            </div>
+
+            <div class="card">
+                <h3>📈 Task Queue</h3>
+                <p>Pending Tasks: <span id="pending-tasks">0</span></p>
+                <p>Completed Today: <span id="completed-tasks">0</span></p>
+                <div class="resource-bar">
+                    <div class="resource-fill" id="queue-fill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🎮 Control Panel</h3>
+            <button class="btn" onclick="submitTestTask()">Submit Test Task</button>
+            <button class="btn" onclick="refreshStatus()">Refresh Status</button>
+            <button class="btn" onclick="viewLogs()">View Logs</button>
+        </div>
+
+        <div class="card">
+            <h3>📝 System Logs</h3>
+            <div class="log" id="system-logs">
+                System initializing...<br>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const RAILWAY_URL = 'https://your-app.railway.app'; // Replace with your Railway URL
+        
+        async function fetchStatus() {
+            try {
+                const response = await fetch(`${RAILWAY_URL}/status`);
+                const data = await response.json();
+                updateDashboard(data);
+            } catch (error) {
+                console.error('Error fetching status:', error);
+                addLog('Error: Could not fetch status from coordinator');
+            }
+        }
+        
+        function updateDashboard(data) {
+            // Update overall status
+            const statusElement = document.getElementById('overall-status');
+            if (data.coordinator === 'online') {
+                statusElement.innerHTML = '<span class="status-online">✅ System Online</span>';
+            } else {
+                statusElement.innerHTML = '<span class="status-offline">❌ System Offline</span>';
+            }
+            
+            // Update resource summary
+            document.getElementById('active-workers').textContent = data.active_workers.length;
+            document.getElementById('pending-tasks').textContent = data.pending_tasks;
+            
+            // Update worker status
+            const workerContainer = document.getElementById('worker-status');
+            workerContainer.innerHTML = '';
+            
+            data.active_workers.forEach(worker => {
+                const workerDiv = document.createElement('div');
+                workerDiv.innerHTML = `
+                    <div style="margin: 5px 0; padding: 5px; background: #e9ecef; border-radius: 3px;">
+                        <strong>${worker}</strong>
+                        <span class="status-online">Online</span>
+                    </div>
+                `;
+                workerContainer.appendChild(workerDiv);
+            });
+            
+            addLog(`Status updated: ${data.active_workers.length} workers active`);
+        }
+        
+        async function submitTestTask() {
+            try {
+                const task = {
+                    type: 'cpu_intensive',
+                    size: 500,
+                    description: 'Test task from dashboard'
+                };
+                
+                const response = await fetch(`${RAILWAY_URL}/api/task/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(task)
+                });
+                
+                const result = await response.json();
+                addLog(`Test task submitted: ${result.task_id}`);
+            } catch (error) {
+                addLog(`Error submitting task: ${error.message}`);
+            }
+        }
+        
+        function refreshStatus() {
+            addLog('Refreshing status...');
+            fetchStatus();
+        }
+        
+        function viewLogs() {
+            addLog('Fetching detailed logs...');
+            // Could fetch more detailed logs from coordinator
+        }
+        
+        function addLog(message) {
+            const logContainer = document.getElementById('system-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logContainer.innerHTML += `[${timestamp}] ${message}<br>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Auto-refresh every 30 seconds
+        setInterval(fetchStatus, 30000);
+        
+        // Initial load
+        fetchStatus();
+        addLog('Dashboard initialized');
+    </script>
+</body>
+</html>
