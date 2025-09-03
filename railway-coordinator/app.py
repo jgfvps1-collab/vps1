@@ -1,12 +1,16 @@
 import os
 from flask import Flask, request, jsonify
 import logging
+from flask_cors import CORS
+import json
+from datetime import datetime
 
 # Set up logging for Render
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # In-memory storage (Railway provides Redis addon for $0)
 active_workers = {}
@@ -98,7 +102,7 @@ def assign_task(task):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    logger.info(f"Starting server on port {port}")
+    app.run(host='0.0.0.0', port=port)
     
     # Use gunicorn for production on Render
     if os.environ.get('RENDER'):
