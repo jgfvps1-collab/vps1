@@ -1,0 +1,9 @@
+Accounts:
+gmail: jgf.vps1@gmail.com
+github
+ngrok (github)
+kaggle (gmail)
+railway (github)
+
+
+vps1 token: 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 
